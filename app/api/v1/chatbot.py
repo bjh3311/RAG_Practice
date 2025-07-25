@@ -1,7 +1,8 @@
 from fastapi import APIRouter
+from app.schemas.chatbot import ChatRequestSchema, ChatResponseSchema
 
 router = APIRouter(prefix="/chatbot", tags=["chatbot"])
 
-@router.post("/")
-async def chatbot_root():
-    return {"messages" : "Chatbot v1 root"}
+@router.post("/", response_model=ChatResponseSchema)
+async def chatbot_root(request: ChatRequestSchema):
+    return ChatResponseSchema(message="보고서")
