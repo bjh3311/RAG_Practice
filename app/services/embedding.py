@@ -32,7 +32,6 @@ class EmbeddingService:
         chunks = chunk_text(text)
         for chunk in chunks:
             vector = await openai_embedding(chunk, self.api_key)
-            print(f"길이: {len(vector)} 일부값: {vector[:5]}")
             point = PointStruct(
                 id=str(uuid.uuid4()),
                 vector=vector, 
@@ -42,3 +41,14 @@ class EmbeddingService:
                 points=[point]
             )
         return True
+    
+    async def search(self, user_message: str):
+        # user_messgae 임베딩
+        query_vector = await openai_embedding(user_message, self.api_key)
+        # Qdrant에서 유사한 벡터 검색
+        result = self.client.search(
+            collection_name=self.collection_name,
+            query_vector=query_vector,
+            limit=3
+        )
+        return [hit.payload["text"] for hit in result]
