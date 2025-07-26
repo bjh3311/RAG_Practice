@@ -16,5 +16,5 @@ async def embed(
     request: EmbeddingRequestSchema,
     embedding_service: EmbeddingService = Depends(get_embedding_service)
 ):
-    embedding_service.add_embedding(request.text)
+    await embedding_service.add_embedding(request.text)
     return {"message": "임베딩 완료"}

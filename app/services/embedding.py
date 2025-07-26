@@ -1,7 +1,6 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct
-from app.core.config import settings
-import numpy as np
+import uuid
 import openai
 
 def chunk_text(text, chunk_size=500):
@@ -9,7 +8,7 @@ def chunk_text(text, chunk_size=500):
 
 async def openai_embedding(text: str, api_key: str) -> list[float]:
     client = openai.AsyncOpenAI(api_key=api_key)
-    response = client.embeddings.create(
+    response = await client.embeddings.create(
         input=text,
         model="text-embedding-3-small"
     )
@@ -17,8 +16,8 @@ async def openai_embedding(text: str, api_key: str) -> list[float]:
 
 
 class EmbeddingService:
-    def __init__(self):
-        self.api_key = settings.OPENAI_API_KEY
+    def __init__(self, api_key: str):
+        self.api_key = api_key
         # 메모리 기반 Qdrant 인스턴스
         self.client = QdrantClient(":memory:")
         self.collection_name = "my_embeddings"
@@ -29,11 +28,15 @@ class EmbeddingService:
                 vectors_config={"size": 1536, "distance": "Cosine"}
             )
 
-    def add_embedding(self, text: str):
+    async def add_embedding(self, text: str):
         chunks = chunk_text(text)
         for chunk in chunks:
-            vector = openai_embedding(chunk, self.api_key)
-            point = PointStruct(id=None, vector=vector, payload={"text": text})
+            vector = await openai_embedding(chunk, self.api_key)
+            print(f"길이: {len(vector)} 일부값: {vector[:5]}")
+            point = PointStruct(
+                id=str(uuid.uuid4()),
+                vector=vector, 
+                payload={"text": text})
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=[point]
