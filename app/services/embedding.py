@@ -1,10 +1,16 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import uuid
 import openai
 
-def chunk_text(text, chunk_size=500):
-    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+def chunk_text(text, chunk_size=200, chunk_overlap=50):
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
+    # LangChain splitter는 문서 리스트를 받으므로, 단일 텍스트는 리스트로 감싸줌
+    return splitter.split_text(text)
 
 async def openai_embedding(text: str, api_key: str) -> list[float]:
     client = openai.AsyncOpenAI(api_key=api_key)
@@ -35,7 +41,7 @@ class EmbeddingService:
             point = PointStruct(
                 id=str(uuid.uuid4()),
                 vector=vector, 
-                payload={"text": text})
+                payload={"text": chunk})
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=[point]
