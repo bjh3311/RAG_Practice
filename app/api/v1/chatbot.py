@@ -1,14 +1,19 @@
 from fastapi import APIRouter, Depends
 from app.schemas.chatbot import ChatRequestSchema, ChatResponseSchema, EmbeddingRequestSchema
-from app.core.dependencies import get_embedding_service
+from app.core.dependencies import get_embedding_service, get_chatbot_service
 from app.services.embedding import EmbeddingService
+from app.services.chatbot import ChatbotService
 
 router = APIRouter(tags=["chatbot"])
 
 
-@router.post("/chatbot", response_model=ChatResponseSchema)
-async def chatbot(request: ChatRequestSchema):
-    return ChatResponseSchema(message="보고서")
+@router.post("/chatbot")
+async def chatbot(
+    request: ChatRequestSchema,
+    chatbot_service: ChatbotService = Depends(get_chatbot_service)
+):
+    answer = await chatbot_service.answer(request.message)
+    return ChatResponseSchema(message=answer)
 
 
 @router.post("/embedding")
