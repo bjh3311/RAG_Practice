@@ -5,3 +5,6 @@ class ChatRequestSchema(BaseModel):
 
 class ChatResponseSchema(BaseModel):
     message: str = Field(..., example="보고서는 내용이 간단합니다", description="LLM 응답")
+
+class EmbeddingRequestSchema(BaseModel):
+    text: str = Field(..., example="MSA란 Micro service Archi....", description="임베딩할 본문")
