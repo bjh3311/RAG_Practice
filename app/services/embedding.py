@@ -1,13 +1,24 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PointStruct
+from app.core.config import settings
 import numpy as np
+import openai
 
-def fake_embedding(text: str) -> list[float]:
-    # 실제 임베딩 모델 대신 랜덤 벡터 (예시)
-    return list(np.random.rand(1536))
+def chunk_text(text, chunk_size=500):
+    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+async def openai_embedding(text: str, api_key: str) -> list[float]:
+    client = openai.AsyncOpenAI(api_key=api_key)
+    response = client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    return response.data[0].embedding
+
 
 class EmbeddingService:
     def __init__(self):
+        self.api_key = settings.OPENAI_API_KEY
         # 메모리 기반 Qdrant 인스턴스
         self.client = QdrantClient(":memory:")
         self.collection_name = "my_embeddings"
@@ -19,10 +30,12 @@ class EmbeddingService:
             )
 
     def add_embedding(self, text: str):
-        vector = fake_embedding(text)
-        point = PointStruct(id=None, vector=vector, payload={"text": text})
-        self.client.upsert(
-            collection_name=self.collection_name,
-            points=[point]
-        )
+        chunks = chunk_text(text)
+        for chunk in chunks:
+            vector = openai_embedding(chunk, self.api_key)
+            point = PointStruct(id=None, vector=vector, payload={"text": text})
+            self.client.upsert(
+                collection_name=self.collection_name,
+                points=[point]
+            )
         return True
