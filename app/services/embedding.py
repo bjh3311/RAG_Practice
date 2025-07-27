@@ -41,7 +41,7 @@ class EmbeddingService:
             point = PointStruct(
                 id=str(uuid.uuid4()),
                 vector=vector, 
-                payload={"text": chunk})
+                payload={"page_content": chunk})
             self.client.upsert(
                 collection_name=self.collection_name,
                 points=[point]
@@ -57,4 +57,4 @@ class EmbeddingService:
             query_vector=query_vector,
             limit=3
         )
-        return [hit.payload["text"] for hit in result]
+        return [hit.payload["page_content"] for hit in result]

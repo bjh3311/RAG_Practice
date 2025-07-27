@@ -48,9 +48,10 @@ class MultiTurnChatbotService:
             {
                 "context": self.retriever | self.format_docs,
                 "question": RunnablePassthrough(),
-                "chat_history": RunnableLambda(lambda _: self.get_chat_history)
+                "chat_history": RunnableLambda(lambda _: self.get_chat_history())
             }
             | self.prompt
+            | RunnableLambda(lambda x: (print(f"\n=== FINAL PROMPT ===\n{x}\n==================="), x)[1])
             | self.llm
             | StrOutputParser() # 단순 문자열 출력
         )
@@ -60,7 +61,7 @@ class MultiTurnChatbotService:
         return "\n---\n".join([doc.page_content for doc in docs])
     
     def get_chat_history(self):
-        messages = self.memory.chat_history.messages
+        messages = self.memory.chat_memory.messages
         if not messages:
             return ""
         history = []
@@ -68,17 +69,11 @@ class MultiTurnChatbotService:
             user = messages[i].content if i < len(messages) else ""
             ai = messages[i+1].content if i+1 < len(messages) else ""
             history.append(f"User: {user}\nAI: {ai}")
+
         return "\n".join(history)
     
     async def answer(self, user_message: str) -> str:
         result = await self.rag_chain.ainvoke(user_message) # 비동기 처리 
         self.memory.chat_memory.add_user_message(user_message)
         self.memory.chat_memory.add_ai_message(result)
-        self.print_chat_memory()
         return result
-    
-    def print_chat_memory(self):
-        """chat_memory의 Message 객체를 날 것 그대로 출력합니다."""
-        messages = self.memory.chat_memory.messages
-        for msg in messages:
-            print(msg)  # 또는 print(repr(msg))

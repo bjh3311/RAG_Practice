@@ -17,12 +17,6 @@ def load_prompt():
 class ChatbotService:
     def __init__(self, embedding_service: EmbeddingService):
         self.embedding_service = embedding_service
-        self.vectorstore = Qdrant(
-            client=embedding_service.client,
-            collection_name=embedding_service.collection_name,
-            embeddings=OpenAIEmbeddings(openai_api_key=embedding_service.api_key)
-        )
-        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": 3})
         self.prompt_config = load_prompt()
 
     async def answer(self, user_message: str) -> str:        # # 1. Qdrant에서 유사 문서 검색
