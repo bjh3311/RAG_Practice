@@ -2,14 +2,13 @@ from app.services.embedding import EmbeddingService
 from langchain_community.vectorstores import Qdrant
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.prompts import ChatPromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.runnable import RunnablePassthrough, RunnableLambda
 from langchain.schema.output_parser import StrOutputParser
 from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
 import yaml
 from pathlib import Path
 
-PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "chatbot.yaml"
+PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "multi_turn.yaml"
 
 def load_prompt():
     with open(PROMPT_PATH, encoding="utf-8") as f:
@@ -19,6 +18,12 @@ class MultiTurnChatbotService:
     def __init__(self, embedding_service: EmbeddingService):
         self.embedding_service = embedding_service
         self.prompt_config = load_prompt()
+
+        self.prompt = ChatPromptTemplate.from_messages([
+            ("system", self.prompt_config["system_message"]),
+            ("user", self.prompt_config["user_prompt"]),
+            ("assistant", self.prompt_config["assistant_message"])
+        ])
         
         # LangChain 방식으로 Qdrant 벡터스토어 설정
         self.vectorstore = Qdrant(
@@ -26,35 +31,50 @@ class MultiTurnChatbotService:
             collection_name=embedding_service.collection_name,
             embeddings=OpenAIEmbeddings(openai_api_key=embedding_service.api_key)
         )
-        
-        # 검색기 설정
-        self.retriever = self.vectorstore.as_retriever(
-            search_kwargs={"k": 3}
-        )
-        
-        # 대화 메모리 설정
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-        
-        # LLM 설정
+
+        self.retriever = self.vectorstore.as_retriever(search_kwargs={"k": 3})
+
         self.llm = ChatOpenAI(
             openai_api_key=embedding_service.api_key,
             model="gpt-4o",
             temperature=0.1
         )
-        
-        # 대화형 검색 체인 설정
-        self.qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            retriever=self.retriever,
-            memory=self.memory,
-            return_source_documents=True,
-            verbose=True
+
+        self.memory = ConversationBufferMemory(
+            memory_key="chat_history",
+            return_messages=True
         )
 
+        self.rag_chain = (
+            {
+                "context": self.retriever | self.format_docs,
+                "question": RunnablePassthrough(),
+                "chat_history": RunnableLambda(lambda _: self.get_chat_history)
+            }
+            | self.prompt
+            | self.llm
+            | StrOutputParser() # 단순 문자열 출력
+        )
+
+    @staticmethod
+    def format_docs(docs):
+        return "\n---\n".join([doc.page_content for doc in docs])
+    
+    def get_chat_history(self):
+        messages = self.memory.chat_history.messages
+        if not messages:
+            return ""
+        history = []
+        for i in range(0, len(messages), 2):
+            user = messages[i].content if i < len(messages) else ""
+            ai = messages[i+1].content if i+1 < len(messages) else ""
+            history.append(f"User: {user}\nAI: {ai}")
+        return "\n".join(history)
+
     async def answer(self, user_message: str) -> str:
-        # ConversationalRetrievalChain은 이미 비동기를 지원하지 않으므로 동기 호출
-        result = self.qa_chain({"question": user_message})
-        return result["answer"]
+        result = await self.rag_chain.ainvoke({
+        "question": user_message
+        }) # 비동기 처리 
+        self.memory.chat_memory.add_user_message(user_message)
+        self.memory.chat_memory.add_ai_message(result)
+        return result
