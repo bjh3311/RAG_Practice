@@ -1,9 +1,4 @@
 from app.services.embedding import EmbeddingService
-from langchain_community.vectorstores import Qdrant
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.schema.output_parser import StrOutputParser
 import openai
 import yaml
 from pathlib import Path

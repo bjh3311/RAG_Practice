@@ -5,10 +5,11 @@ from app.core.dependencies import get_mcp_service
 
 router = APIRouter(prefix="/mcp",tags=["mcp"])
 
-@router.post("/langgraph")
+@router.post("/notion")
 async def langgraph(
     request: MCPRequestSchema,
     mcp_service: MCPService = Depends(get_mcp_service)
 ):
-    return MCPResponseSchema(message="abc")
+    message = await mcp_service.summarize(request.content)
+    return MCPResponseSchema(message=message)
     

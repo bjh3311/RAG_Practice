@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.schemas.chatbot import EmbeddingRequestSchema
-from app.core.dependencies import get_embedding_service, get_chatbot_service
+from app.core.dependencies import get_embedding_service
 from app.services.embedding import EmbeddingService
 
 router = APIRouter(tags=["embedding"])
