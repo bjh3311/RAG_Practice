@@ -1,13 +1,13 @@
 from pathlib import Path
-from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
-from langchain.schema.runnable import RunnablePassthrough
-from langchain.schema.output_parser import StrOutputParser
 from app.core.config import settings
+from mcp_use import MCPClient, MCPAgent
 
 import yaml
 
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "mcp.yaml"
+config_path = Path(__file__).parent.parent / "core" / "multi_server_config.json"
+
 
 def load_prompt():
     with open(PROMPT_PATH, encoding="utf-8") as f:
@@ -17,25 +17,18 @@ class MCPService:
     def __init__(self):
         self.prompt_config = load_prompt()
 
-        self.prompt = ChatPromptTemplate.from_messages([
-            ("system", self.prompt_config["system_message"]),
-            ("user", self.prompt_config["user_prompt"])
-        ])
-
+        self.client = MCPClient.from_config_file(str(config_path))
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
             model="gpt-4o",
             temperature=0.3
         )
-        self.rag_chain = (
-            {
-                "question": RunnablePassthrough(),
-            }
-            | self.prompt
-            | self.llm
-            | StrOutputParser() # 단순 문자열 출력
+        self.agent = MCPAgent(
+            llm=self.llm,
+            client=self.client,
+            system_prompt_template=self.prompt_config["system_message"]
         )
-    
+        
     async def summarize(self, content: str) -> str:
-        result = await self.rag_chain.ainvoke(content)
+        result = await self.agent.run(content)
         return result
