@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends
 from app.schemas.mcp import MCPRequestSchema, MCPResponseSchema
 from app.services.mcp import MCPService
 from app.core.dependencies import get_mcp_service
-from fastapi_mcp import FastApiMCP
 
 router = APIRouter(prefix="/mcp",tags=["mcp"])
 
