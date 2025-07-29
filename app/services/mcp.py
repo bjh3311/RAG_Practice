@@ -2,11 +2,11 @@ from pathlib import Path
 from langchain_openai import ChatOpenAI
 from app.core.config import settings
 from mcp_use import MCPClient, MCPAgent
-
+import json
 import yaml
 
 PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "mcp.yaml"
-config_path = Path(__file__).parent.parent / "core" / "multi_server_config.json"
+CONFIG_PATH = Path(__file__).parent.parent / "core" / "multi_server_config.json"
 
 
 def load_prompt():
@@ -16,8 +16,7 @@ def load_prompt():
 class MCPService:
     def __init__(self):
         self.prompt_config = load_prompt()
-
-        self.client = MCPClient.from_config_file(str(config_path))
+        self.client = MCPClient.from_config_file(str(CONFIG_PATH))
         self.llm = ChatOpenAI(
             openai_api_key=settings.OPENAI_API_KEY,
             model="gpt-4o",

@@ -1,2 +1,4 @@
 .env
 venv/
+
+app/core/multi_server_config.json
